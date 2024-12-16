@@ -86,13 +86,13 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.anonymous.fintechexpo'
+    namespace "com.fintechexpo"
     defaultConfig {
-        applicationId 'com.anonymous.fintechexpo'
+        applicationId "com.fintechexpo"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0.0"
+        versionName "1.0"
     }
     signingConfigs {
         debug {
