@@ -1,12 +1,19 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import React from 'react';
 
 import { useColorScheme } from '@/components/useColorScheme';
+import Colors from '@/constants/Colors';
+import { TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Link } from 'expo-router';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -42,16 +49,59 @@ export default function RootLayout() {
     return null;
   }
 
-  return <RootLayoutNav />;
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <StatusBar style='dark' />
+      <RootLayoutNav />
+    </GestureHandlerRootView>
+  );
 }
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name='index' options={{ headerShown: false }} />
+        <Stack.Screen
+          name='signup'
+          options={{
+            title: '',
+            headerBackTitle: ' ',
+            headerStyle: { backgroundColor: Colors.light.background },
+            headerShadowVisible: false,
+            headerLeft: () => (
+              <TouchableOpacity onPress={() => router.back()}>
+                <Ionicons name='arrow-back' size={34} color={Colors.light.dark} />
+              </TouchableOpacity>
+            ),
+          }}
+        />
+        <Stack.Screen
+          name='login'
+          options={{
+            title: '',
+            headerBackTitle: ' ',
+            headerStyle: { backgroundColor: Colors.light.background },
+            headerShadowVisible: false,
+            headerLeft: () => (
+              <TouchableOpacity onPress={() => router.back()}>
+                <Ionicons name='arrow-back' size={34} color={Colors.light.dark} />
+              </TouchableOpacity>
+            ),
+            headerRight: () => (
+              <Link href='/help'>
+                <TouchableOpacity>
+                  <Ionicons name='help-circle-outline' size={34} color={Colors.light.dark} />
+                </TouchableOpacity>
+              </Link>
+            ),
+          }}
+        />
+
+        <Stack.Screen name='help' options={{ title: 'Help', presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>
   );
