@@ -59,10 +59,12 @@ export default function RootLayout() {
 
   return (
     <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <StatusBar style='dark' />
-        <RootLayoutNav />
-      </GestureHandlerRootView>
+      <ClerkLoaded>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <StatusBar style='dark' />
+          <RootLayoutNav />
+        </GestureHandlerRootView>
+      </ClerkLoaded>
     </ClerkProvider>
   );
 }

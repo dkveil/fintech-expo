@@ -25,8 +25,17 @@ const LoginScreen = () => {
       try {
         const fullPhoneNumber = `${countryCode}${phoneNumber}`;
 
-        const { supportedFirstFactor } = await signIn!.create({
+        const { supportedFirstFactors } = await signIn!.create({
           identifier: fullPhoneNumber,
+        });
+
+        const firstPhoneFactor: any = supportedFirstFactors!.find((factor: any) => factor.type === 'phone_number');
+
+        const { phoneNumberId } = firstPhoneFactor;
+
+        await signIn!.prepareFirstFactor({
+          strategy: 'phone_code',
+          phoneNumberId,
         });
 
         router.push({ pathname: '/verify/[phone]', params: { phone: fullPhoneNumber } });
