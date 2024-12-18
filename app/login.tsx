@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { defaultStyles } from '@/constants/Styles';
 import Colors from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useSignIn } from '@clerk/clerk-expo';
 
 enum SignInType {
   Phone,
@@ -15,9 +17,22 @@ const LoginScreen = () => {
   const [countryCode, setCountryCode] = useState('+49');
   const [phoneNumber, setPhoneNumber] = useState('');
 
+  const router = useRouter();
+  const { signIn } = useSignIn();
+
   const onLogin = async (type: SignInType) => {
     if (type === SignInType.Phone) {
-      console.log('Phone login');
+      try {
+        const fullPhoneNumber = `${countryCode}${phoneNumber}`;
+
+        const { supportedFirstFactor } = await signIn!.create({
+          identifier: fullPhoneNumber,
+        });
+
+        router.push({ pathname: '/verify/[phone]', params: { phone: fullPhoneNumber } });
+      } catch (error) {
+        console.error('Error signing in:', error);
+      }
     }
 
     if (type === SignInType.Email) {
