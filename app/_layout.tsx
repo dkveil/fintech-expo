@@ -42,22 +42,16 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
 
-  const { isLoaded } = useAuth();
-
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
     if (error) throw error;
   }, [error]);
 
   useEffect(() => {
-    if (loaded && isLoaded) {
+    if (loaded) {
       SplashScreen.hideAsync();
     }
-  }, [loaded, isLoaded]);
-
-  if (!loaded) {
-    return null;
-  }
+  }, [loaded]);
 
   return (
     <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
@@ -78,7 +72,13 @@ function RootLayoutNav() {
 
   useEffect(() => {
     console.log('isSignedIn', isSignedIn);
-  }, [isSignedIn]);
+
+    if (isSignedIn) {
+      router.replace('/(authenticated)/(tabs)/home');
+    } else if (!isSignedIn) {
+      router.replace('/');
+    }
+  }, [isSignedIn]); // eslint-disable-line
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -123,7 +123,37 @@ function RootLayoutNav() {
         <Stack.Screen name='help' options={{ title: 'Help', presentation: 'modal' }} />
 
         <Stack.Screen
-          name='verify/[phone]'
+          name='verify/[identifier]'
+          options={{
+            title: '',
+            headerBackTitle: ' ',
+            headerStyle: { backgroundColor: Colors.light.background },
+            headerShadowVisible: false,
+            headerLeft: () => (
+              <TouchableOpacity onPress={() => router.back()}>
+                <Ionicons name='arrow-back' size={34} color={Colors.light.dark} />
+              </TouchableOpacity>
+            ),
+          }}
+        />
+
+        <Stack.Screen
+          name='(email)/signup'
+          options={{
+            title: '',
+            headerBackTitle: ' ',
+            headerStyle: { backgroundColor: Colors.light.background },
+            headerShadowVisible: false,
+            headerLeft: () => (
+              <TouchableOpacity onPress={() => router.back()}>
+                <Ionicons name='arrow-back' size={34} color={Colors.light.dark} />
+              </TouchableOpacity>
+            ),
+          }}
+        />
+
+        <Stack.Screen
+          name='(email)/login'
           options={{
             title: '',
             headerBackTitle: ' ',

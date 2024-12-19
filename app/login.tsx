@@ -1,11 +1,13 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { useState, useRef } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
 import { defaultStyles } from '@/constants/Styles';
 import Colors from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useSignIn, isClerkAPIResponseError } from '@clerk/clerk-expo';
+import { useSignIn, isClerkAPIResponseError, useOAuth } from '@clerk/clerk-expo';
 import { phoneSchema, type PhoneFormData, type ValidationErrors } from './signup';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 
 enum SignInType {
   Phone,
@@ -14,7 +16,28 @@ enum SignInType {
   Apple,
 }
 
+enum OAuthStrategy {
+  Google = 'oauth_google',
+  Apple = 'oauth_apple',
+}
+
+const redirectUrl = Linking.createURL('/dashboard', { scheme: 'fintech-expo' });
+
+export const useWarmUpBrowser = () => {
+  useEffect(() => {
+    // Warm up the android browser to improve UX
+    void WebBrowser.warmUpAsync();
+    return () => {
+      void WebBrowser.coolDownAsync();
+    };
+  }, []);
+};
+
+WebBrowser.maybeCompleteAuthSession();
+
 export default function LoginScreen() {
+  useWarmUpBrowser();
+
   const countryCodeRef = useRef<string>('+48');
   const phoneNumberRef = useRef<string>('');
 
@@ -23,6 +46,9 @@ export default function LoginScreen() {
 
   const router = useRouter();
   const { signIn } = useSignIn();
+
+  const { startOAuthFlow: startGoogleOAuthFlow } = useOAuth({ strategy: OAuthStrategy.Google });
+  const { startOAuthFlow: startAppleOAuthFlow } = useOAuth({ strategy: OAuthStrategy.Apple });
 
   const keyboardVerticalOffset = Platform.OS === 'ios' ? 90 : 0;
 
@@ -64,7 +90,7 @@ export default function LoginScreen() {
           identifier: fullPhoneNumber,
         });
 
-        const firstPhoneFactor: any = supportedFirstFactors!.find((factor: any) => factor.type === 'phone_number');
+        const firstPhoneFactor: any = supportedFirstFactors!.find((factor: any) => factor.strategy === 'phone_code');
 
         const { phoneNumberId } = firstPhoneFactor;
 
@@ -73,82 +99,126 @@ export default function LoginScreen() {
           phoneNumberId,
         });
 
-        router.push({ pathname: '/verify/[phone]', params: { phone: fullPhoneNumber, login: 'true' } });
+        router.push({ pathname: '/verify/[identifier]', params: { identifier: fullPhoneNumber, strategy: 'phone_code', login: 'true' } });
       } catch (error) {
         if (isClerkAPIResponseError(error)) {
           Alert.alert('Error', error.errors[0].message);
           return;
         }
 
-        console.error('Error signing in:', error);
+        Alert.alert('Error', 'An error occurred during sign in. Please try again later.');
       }
     }
 
     if (type === SignInType.Email) {
-      console.log('Email login');
+      router.push('/(email)/login');
+    }
+
+    if (type === SignInType.Google) {
+      try {
+        const { createdSessionId, setActive } = await startGoogleOAuthFlow({ redirectUrl });
+
+        if (createdSessionId) {
+          await setActive!({ session: createdSessionId, redirectUrl });
+          router.replace('/(authenticated)/(tabs)/home');
+          return;
+        }
+
+        throw new Error('Unable to sign in with Google. Please try again later.');
+      } catch (error) {
+        if (isClerkAPIResponseError(error)) {
+          Alert.alert('Error', error.errors[0].message);
+          return;
+        }
+
+        Alert.alert('Error', 'Unable to sign in with Google. Please try again later.');
+      }
+    }
+
+    if (type === SignInType.Apple) {
+      try {
+        const { createdSessionId, setActive } = await startAppleOAuthFlow({ redirectUrl });
+
+        if (createdSessionId) {
+          await setActive!({ session: createdSessionId, redirectUrl });
+          router.replace('/(authenticated)/(tabs)/home');
+          return;
+        }
+
+        Alert.alert('Error', 'Unable to sign in with Apple. Please try again later.');
+      } catch (error) {
+        if (isClerkAPIResponseError(error)) {
+          Alert.alert('Error', error.errors[0].message);
+          return;
+        }
+
+        Alert.alert('Error', 'Unable to sign in with Apple. Please try again later.');
+      }
     }
   };
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior='padding' keyboardVerticalOffset={keyboardVerticalOffset}>
-      <View style={defaultStyles.container}>
-        <Text style={defaultStyles.header}>Welcome back!</Text>
-        <Text style={defaultStyles.descriptionText}>Enter your phone number. We will sen you a confirmation code there</Text>
-        <View style={{ marginVertical: 15 }}>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={[styles.input, { width: 80 }]}
-              placeholder='+00'
-              keyboardType='phone-pad'
-              placeholderTextColor={Colors.light.gray}
-              defaultValue={countryCodeRef.current}
-              onChangeText={text => {
-                countryCodeRef.current = text;
-                validateInputs();
-              }}
-              maxLength={3}
-            />
-            <TextInput
-              style={[styles.input, { flex: 1, marginRight: 0 }]}
-              placeholder='Phone number'
-              keyboardType='phone-pad'
-              placeholderTextColor={Colors.light.gray}
-              defaultValue={phoneNumberRef.current}
-              onChangeText={text => {
-                phoneNumberRef.current = text;
-                validateInputs();
-              }}
-              maxLength={14}
-            />
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={defaultStyles.container}>
+          <Text style={defaultStyles.header}>Welcome back!</Text>
+          <Text style={defaultStyles.descriptionText}>Enter your phone number. We will send you a confirmation code there</Text>
+          <View style={{ marginVertical: 15 }}>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={[styles.input, { width: 80 }]}
+                placeholder='+00'
+                keyboardType='phone-pad'
+                placeholderTextColor={Colors.light.gray}
+                defaultValue={countryCodeRef.current}
+                onChangeText={text => {
+                  countryCodeRef.current = text;
+                  validateInputs();
+                }}
+                maxLength={3}
+              />
+              <TextInput
+                style={[styles.input, { flex: 1, marginRight: 0 }]}
+                placeholder='Phone number'
+                keyboardType='phone-pad'
+                placeholderTextColor={Colors.light.gray}
+                defaultValue={phoneNumberRef.current}
+                onChangeText={text => {
+                  phoneNumberRef.current = text;
+                  validateInputs();
+                }}
+                maxLength={14}
+              />
+            </View>
+            <View>
+              <Text style={styles.errorText}>{errors.countryCode ? errors.countryCode : errors.phoneNumber}</Text>
+            </View>
           </View>
-          <View>
-            <Text style={styles.errorText}>{errors.countryCode ? errors.countryCode : errors.phoneNumber}</Text>
+
+          <TouchableOpacity style={[defaultStyles.pillButton, isValid ? styles.enabled : styles.disabled, { marginBottom: 20 }]} onPress={() => onLogin(SignInType.Phone)}>
+            <Text style={defaultStyles.buttonText}>Continue</Text>
+          </TouchableOpacity>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+            <View style={{ flex: 1, backgroundColor: Colors.light.gray, height: StyleSheet.hairlineWidth }}></View>
+            <Text style={{ color: Colors.light.gray }}>OR</Text>
+            <View style={{ flex: 1, backgroundColor: Colors.light.gray, height: StyleSheet.hairlineWidth }}></View>
           </View>
+
+          <TouchableOpacity style={[defaultStyles.pillButton, { flexDirection: 'row', gap: 12, marginTop: 20, backgroundColor: 'white' }]} onPress={() => onLogin(SignInType.Email)}>
+            <Ionicons name='mail' size={24} color={Colors.light.dark} />
+            <Text style={[defaultStyles.buttonText, { color: Colors.light.dark }]}>Continue with email</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[defaultStyles.pillButton, { flexDirection: 'row', gap: 12, marginTop: 20, backgroundColor: 'white' }]} onPress={() => onLogin(SignInType.Google)}>
+            <Ionicons name='logo-google' size={24} color={Colors.light.dark} />
+            <Text style={[defaultStyles.buttonText, { color: Colors.light.dark }]}>Continue with G-mail</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[defaultStyles.pillButton, { flexDirection: 'row', gap: 12, marginTop: 20, backgroundColor: 'white' }]} onPress={() => onLogin(SignInType.Apple)}>
+            <Ionicons name='logo-apple' size={24} color={Colors.light.dark} />
+            <Text style={[defaultStyles.buttonText, { color: Colors.light.dark }]}>Continue with Apple</Text>
+          </TouchableOpacity>
         </View>
-
-        <TouchableOpacity style={[defaultStyles.pillButton, isValid ? styles.enabled : styles.disabled, { marginBottom: 20 }]} onPress={() => onLogin(SignInType.Phone)}>
-          <Text style={defaultStyles.buttonText}>Continue</Text>
-        </TouchableOpacity>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-          <View style={{ flex: 1, backgroundColor: Colors.light.gray, height: StyleSheet.hairlineWidth }}></View>
-          <Text style={{ color: Colors.light.gray }}>OR</Text>
-          <View style={{ flex: 1, backgroundColor: Colors.light.gray, height: StyleSheet.hairlineWidth }}></View>
-        </View>
-
-        <TouchableOpacity style={[defaultStyles.pillButton, { flexDirection: 'row', gap: 12, marginTop: 20, backgroundColor: 'white' }]} onPress={() => onLogin(SignInType.Email)}>
-          <Ionicons name='mail' size={24} color={Colors.light.dark} />
-          <Text style={[defaultStyles.buttonText, { color: Colors.light.dark }]}>Continue with email</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[defaultStyles.pillButton, { flexDirection: 'row', gap: 12, marginTop: 20, backgroundColor: 'white' }]} onPress={() => onLogin(SignInType.Email)}>
-          <Ionicons name='logo-google' size={24} color={Colors.light.dark} />
-          <Text style={[defaultStyles.buttonText, { color: Colors.light.dark }]}>Continue with G-mail</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[defaultStyles.pillButton, { flexDirection: 'row', gap: 12, marginTop: 20, backgroundColor: 'white' }]} onPress={() => onLogin(SignInType.Email)}>
-          <Ionicons name='logo-apple' size={24} color={Colors.light.dark} />
-          <Text style={[defaultStyles.buttonText, { color: Colors.light.dark }]}>Continue with Apple</Text>
-        </TouchableOpacity>
-      </View>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 }

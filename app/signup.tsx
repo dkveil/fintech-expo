@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { useState, useRef } from 'react';
 import { defaultStyles } from '@/constants/Styles';
 import Colors from '@/constants/Colors';
@@ -78,68 +78,77 @@ export default function SignUpScreen() {
       await signUp!.create({
         phoneNumber: fullPhoneNumber,
       });
-      signUp!.preparePhoneNumberVerification();
+      signUp!.prepareVerification({
+        strategy: 'phone_code',
+      });
 
-      router.push({ pathname: '/verify/[phone]', params: { phone: fullPhoneNumber } });
+      router.push({ pathname: '/verify/[identifier]', params: { identifier: fullPhoneNumber, strategy: 'phone_code' } });
     } catch (error) {
       if (isClerkAPIResponseError(error)) {
         Alert.alert('Error', error.errors[0].message);
         return;
       }
 
-      console.log('Error during sign up:', error);
+      Alert.alert('Error', 'An error occurred during sign up. Please try again later.');
     }
   };
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior='padding' keyboardVerticalOffset={keyboardVerticalOffset}>
-      <SafeAreaView style={defaultStyles.container}>
-        <Text style={defaultStyles.header}>Let's get started!</Text>
-        <Text style={defaultStyles.descriptionText}>Enter your phone number. We will sen you a confirmation code there</Text>
-        <View style={{ marginVertical: 15 }}>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={[styles.input, { width: 80 }]}
-              placeholder='+00'
-              keyboardType='phone-pad'
-              placeholderTextColor={Colors.light.gray}
-              defaultValue={countryCodeRef.current}
-              onChangeText={text => {
-                countryCodeRef.current = text;
-                validateInputs();
-              }}
-              maxLength={3}
-            />
-            <TextInput
-              style={[styles.input, { flex: 1, marginRight: 0 }]}
-              placeholder='Phone number'
-              keyboardType='phone-pad'
-              placeholderTextColor={Colors.light.gray}
-              defaultValue={phoneNumberRef.current}
-              onChangeText={text => {
-                phoneNumberRef.current = text;
-                validateInputs();
-              }}
-              maxLength={14}
-            />
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <SafeAreaView style={defaultStyles.container}>
+          <Text style={defaultStyles.header}>Let's get started!</Text>
+          <Text style={defaultStyles.descriptionText}>Enter your phone number. We will sen you a confirmation code there</Text>
+          <View style={{ marginVertical: 25 }}>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={[styles.input, { width: 80 }]}
+                placeholder='+00'
+                keyboardType='phone-pad'
+                placeholderTextColor={Colors.light.gray}
+                defaultValue={countryCodeRef.current}
+                onChangeText={text => {
+                  countryCodeRef.current = text;
+                  validateInputs();
+                }}
+                maxLength={3}
+              />
+              <TextInput
+                style={[styles.input, { flex: 1, marginRight: 0 }]}
+                placeholder='Phone number'
+                keyboardType='phone-pad'
+                placeholderTextColor={Colors.light.gray}
+                defaultValue={phoneNumberRef.current}
+                onChangeText={text => {
+                  phoneNumberRef.current = text;
+                  validateInputs();
+                }}
+                maxLength={14}
+              />
+            </View>
+            <View>
+              <Text style={styles.errorText}>{errors.countryCode ? errors.countryCode : errors.phoneNumber}</Text>
+            </View>
+            <Link href='/(email)/signup' replace asChild>
+              <TouchableOpacity>
+                <Text style={defaultStyles.textLink}>Sign up with email</Text>
+              </TouchableOpacity>
+            </Link>
           </View>
-          <View>
-            <Text style={styles.errorText}>{errors.countryCode ? errors.countryCode : errors.phoneNumber}</Text>
-          </View>
-        </View>
 
-        <Link style={{ marginBottom: 15 }} href='/login' replace asChild>
-          <TouchableOpacity>
-            <Text style={defaultStyles.textLink}>Already have an acccount? Log in</Text>
+          <Link style={{ marginBottom: 15 }} href='/login' replace asChild>
+            <TouchableOpacity>
+              <Text style={defaultStyles.textLink}>Already have an acccount? Log in</Text>
+            </TouchableOpacity>
+          </Link>
+
+          <View style={{ flex: 1 }} />
+
+          <TouchableOpacity style={[defaultStyles.pillButton, isValid ? styles.enabled : styles.disabled, { marginBottom: 20 }]} onPress={onSignup}>
+            <Text style={defaultStyles.buttonText}>Sign Up</Text>
           </TouchableOpacity>
-        </Link>
-
-        <View style={{ flex: 1 }} />
-
-        <TouchableOpacity style={[defaultStyles.pillButton, isValid ? styles.enabled : styles.disabled, { marginBottom: 20 }]} onPress={onSignup}>
-          <Text style={defaultStyles.buttonText}>Sign Up</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
+        </SafeAreaView>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 }

@@ -5,13 +5,16 @@ import { isClerkAPIResponseError, useSignUp } from '@clerk/clerk-expo';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CodeField, Cursor, useBlurOnFulfill, useClearByFocusCell } from 'react-native-confirmation-code-field';
 import { defaultStyles } from '@/constants/Styles';
+import { useSignIn } from '@clerk/clerk-expo';
+
 import Colors from '@/constants/Colors';
 
 const CELL_COUNT = 6;
 
 export default function PhoneVerifyScreen() {
-  const { phone, login } = useLocalSearchParams<{ phone: string; login: string }>();
+  const { identifier, strategy, login } = useLocalSearchParams<{ identifier: string; strategy: 'email_code' | 'phone_code'; login: string }>();
   const [code, setCode] = useState<string>('');
+  const { signIn } = useSignIn();
   const { signUp, setActive } = useSignUp();
 
   const ref = useBlurOnFulfill({ value: code, cellCount: CELL_COUNT });
@@ -35,7 +38,7 @@ export default function PhoneVerifyScreen() {
   const verifyCode = async () => {
     try {
       await signUp!.attemptVerification({
-        strategy: 'phone_code',
+        strategy,
         code,
       });
       await setActive!({
@@ -47,17 +50,32 @@ export default function PhoneVerifyScreen() {
         return;
       }
 
-      console.error('Error verifying code:', error);
+      Alert.alert('Error', 'Something went wrong. Please try again later.');
     }
   };
 
-  const verifyLogin = async () => {};
+  const verifyLogin = async () => {
+    try {
+      await signIn!.attemptFirstFactor({
+        strategy,
+        code,
+      });
+      await setActive!({ session: signIn!.createdSessionId });
+    } catch (error) {
+      if (isClerkAPIResponseError(error)) {
+        Alert.alert('Error', error.errors[0].message);
+        return;
+      }
+
+      Alert.alert('Error', 'Something went wrong. Please try again later.');
+    }
+  };
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior='padding' keyboardVerticalOffset={keyboardVerticalOffset}>
       <SafeAreaView style={defaultStyles.container}>
         <Text style={defaultStyles.header}>6-digit code</Text>
-        <Text style={defaultStyles.descriptionText}>Code sent to {phone} unless you already have an account</Text>
+        <Text style={defaultStyles.descriptionText}>Code sent to {identifier} unless you already have an account</Text>
         <CodeField
           ref={ref}
           {...props}
@@ -65,6 +83,7 @@ export default function PhoneVerifyScreen() {
           onChangeText={setCode}
           cellCount={CELL_COUNT}
           rootStyle={styles.codeFieldRoot}
+          keyboardType='phone-pad'
           textContentType='oneTimeCode'
           renderCell={({ index, symbol, isFocused }) => (
             <Fragment key={index}>
