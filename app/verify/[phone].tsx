@@ -10,7 +10,7 @@ import Colors from '@/constants/Colors';
 const CELL_COUNT = 6;
 
 export default function PhoneVerifyScreen() {
-  const { phone } = useLocalSearchParams<{ phone: string }>();
+  const { phone, login } = useLocalSearchParams<{ phone: string; login: string }>();
   const [code, setCode] = useState<string>('');
   const { signUp, setActive } = useSignUp();
 
@@ -24,6 +24,10 @@ export default function PhoneVerifyScreen() {
 
   useEffect(() => {
     if (code.length === 6) {
+      if (login === 'true') {
+        verifyLogin();
+        return;
+      }
       verifyCode();
     }
   }, [code]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -40,9 +44,14 @@ export default function PhoneVerifyScreen() {
     } catch (error) {
       if (isClerkAPIResponseError(error)) {
         Alert.alert('Error', error.errors[0].message);
+        return;
       }
+
+      console.error('Error verifying code:', error);
     }
   };
+
+  const verifyLogin = async () => {};
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior='padding' keyboardVerticalOffset={keyboardVerticalOffset}>

@@ -3,16 +3,16 @@ import { useState, useRef } from 'react';
 import { defaultStyles } from '@/constants/Styles';
 import Colors from '@/constants/Colors';
 import { Link, useRouter } from 'expo-router';
-import { useSignUp } from '@clerk/clerk-expo';
+import { isClerkAPIResponseError, useSignUp } from '@clerk/clerk-expo';
 import { z } from 'zod';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-interface PhoneFormData {
+export interface PhoneFormData {
   countryCode: string;
   phoneNumber: string;
 }
 
-const phoneSchema = z
+export const phoneSchema = z
   .object({
     countryCode: z.string().regex(/^\+\d{1,3}$/, 'Country code must start with + followed by 1 to 3 digits'),
     phoneNumber: z.string().regex(/^\d{4,14}$/, 'Phone number must be between 4 and 14 digits'),
@@ -28,7 +28,7 @@ const phoneSchema = z
     }
   );
 
-type ValidationErrors = Partial<Record<keyof PhoneFormData, string>>;
+export type ValidationErrors = Partial<Record<keyof PhoneFormData, string>>;
 
 export default function SignUpScreen() {
   const countryCodeRef = useRef<string>('+48');
@@ -72,17 +72,22 @@ export default function SignUpScreen() {
       return;
     }
 
-    const fullPhoneNumber = `${countryCodeRef.current}${phoneNumberRef.current}`.trim();
-    router.push({ pathname: '/verify/[phone]', params: { phone: fullPhoneNumber } });
-
     try {
+      const fullPhoneNumber = `${countryCodeRef.current}${phoneNumberRef.current}`.trim();
+
       await signUp!.create({
         phoneNumber: fullPhoneNumber,
       });
       signUp!.preparePhoneNumberVerification();
+
+      router.push({ pathname: '/verify/[phone]', params: { phone: fullPhoneNumber } });
     } catch (error) {
+      if (isClerkAPIResponseError(error)) {
+        Alert.alert('Error', error.errors[0].message);
+        return;
+      }
+
       console.log('Error during sign up:', error);
-      Alert.alert('Error', 'An error occurred. Please try again later');
     }
   };
 
