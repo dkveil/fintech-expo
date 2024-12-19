@@ -13,7 +13,7 @@ enum SignInType {
   Apple,
 }
 
-const LoginScreen = () => {
+export default function LoginScreen() {
   const [countryCode, setCountryCode] = useState('+49');
   const [phoneNumber, setPhoneNumber] = useState('');
 
@@ -86,7 +86,7 @@ const LoginScreen = () => {
       </View>
     </KeyboardAvoidingView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   inputContainer: {
@@ -107,5 +107,3 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.primaryMuted,
   },
 });
-
-export default LoginScreen;

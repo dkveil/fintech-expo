@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Link } from 'expo-router';
-import { ClerkProvider, ClerkLoaded } from '@clerk/clerk-expo';
+import { ClerkProvider, ClerkLoaded, useAuth } from '@clerk/clerk-expo';
 import { tokenCache } from '@/cache';
 
 export {
@@ -42,16 +42,18 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
 
+  const { isLoaded } = useAuth();
+
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
     if (error) throw error;
   }, [error]);
 
   useEffect(() => {
-    if (loaded) {
+    if (loaded && isLoaded) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [loaded, isLoaded]);
 
   if (!loaded) {
     return null;
@@ -72,6 +74,11 @@ export default function RootLayout() {
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const router = useRouter();
+  const { isSignedIn } = useAuth();
+
+  useEffect(() => {
+    console.log('isSignedIn', isSignedIn);
+  }, [isSignedIn]);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -114,6 +121,21 @@ function RootLayoutNav() {
         />
 
         <Stack.Screen name='help' options={{ title: 'Help', presentation: 'modal' }} />
+
+        <Stack.Screen
+          name='verify/[phone]'
+          options={{
+            title: '',
+            headerBackTitle: ' ',
+            headerStyle: { backgroundColor: Colors.light.background },
+            headerShadowVisible: false,
+            headerLeft: () => (
+              <TouchableOpacity onPress={() => router.back()}>
+                <Ionicons name='arrow-back' size={34} color={Colors.light.dark} />
+              </TouchableOpacity>
+            ),
+          }}
+        />
       </Stack>
     </ThemeProvider>
   );

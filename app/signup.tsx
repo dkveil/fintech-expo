@@ -5,6 +5,7 @@ import Colors from '@/constants/Colors';
 import { Link, useRouter } from 'expo-router';
 import { useSignUp } from '@clerk/clerk-expo';
 import { z } from 'zod';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface PhoneFormData {
   countryCode: string;
@@ -29,7 +30,7 @@ const phoneSchema = z
 
 type ValidationErrors = Partial<Record<keyof PhoneFormData, string>>;
 
-const SignupScreen = () => {
+export default function SignUpScreen() {
   const countryCodeRef = useRef<string>('+48');
   const phoneNumberRef = useRef<string>('');
 
@@ -38,6 +39,8 @@ const SignupScreen = () => {
 
   const router = useRouter();
   const { signUp } = useSignUp();
+
+  const keyboardVerticalOffset = Platform.OS === 'ios' ? 90 : 0;
 
   const validateInputs = () => {
     const data = {
@@ -65,32 +68,30 @@ const SignupScreen = () => {
     validateInputs();
 
     if (!isValid) {
-      console.error('Formularz zawiera błędy.');
+      Alert.alert('Error', 'Please correct the errors in the form');
       return;
     }
+
     const fullPhoneNumber = `${countryCodeRef.current}${phoneNumberRef.current}`.trim();
+    router.push({ pathname: '/verify/[phone]', params: { phone: fullPhoneNumber } });
 
     try {
       await signUp!.create({
         phoneNumber: fullPhoneNumber,
       });
       signUp!.preparePhoneNumberVerification();
-
-      router.push({ pathname: '/verify/[phone]', params: { phone: fullPhoneNumber } });
     } catch (error) {
       console.log('Error during sign up:', error);
       Alert.alert('Error', 'An error occurred. Please try again later');
     }
   };
 
-  const keyboardVerticalOffset = Platform.OS === 'ios' ? 90 : 0;
-
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior='padding' keyboardVerticalOffset={keyboardVerticalOffset}>
-      <View style={defaultStyles.container}>
+      <SafeAreaView style={defaultStyles.container}>
         <Text style={defaultStyles.header}>Let's get started!</Text>
         <Text style={defaultStyles.descriptionText}>Enter your phone number. We will sen you a confirmation code there</Text>
-        <View style={{ marginVertical: 40 }}>
+        <View style={{ marginVertical: 15 }}>
           <View style={styles.inputContainer}>
             <TextInput
               style={[styles.input, { width: 80 }]}
@@ -117,10 +118,12 @@ const SignupScreen = () => {
               maxLength={14}
             />
           </View>
-          <View> {errors.countryCode ? <Text style={styles.errorText}>{errors.countryCode}</Text> : errors.phoneNumber ? <Text style={styles.errorText}>{errors.phoneNumber}</Text> : null}</View>
+          <View>
+            <Text style={styles.errorText}>{errors.countryCode ? errors.countryCode : errors.phoneNumber}</Text>
+          </View>
         </View>
 
-        <Link href='/login' replace asChild>
+        <Link style={{ marginBottom: 15 }} href='/login' replace asChild>
           <TouchableOpacity>
             <Text style={defaultStyles.textLink}>Already have an acccount? Log in</Text>
           </TouchableOpacity>
@@ -131,10 +134,10 @@ const SignupScreen = () => {
         <TouchableOpacity style={[defaultStyles.pillButton, isValid ? styles.enabled : styles.disabled, { marginBottom: 20 }]} onPress={onSignup}>
           <Text style={defaultStyles.buttonText}>Sign Up</Text>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     </KeyboardAvoidingView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   inputContainer: {
@@ -160,5 +163,3 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.primaryMuted,
   },
 });
-
-export default SignupScreen;
