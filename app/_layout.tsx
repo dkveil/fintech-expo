@@ -9,7 +9,7 @@ import React from 'react';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import Colors from '@/constants/Colors';
-import { TouchableOpacity } from 'react-native';
+import { ActivityIndicator, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -36,7 +36,10 @@ if (!CLERK_PUBLISHABLE_KEY) {
   throw new Error('Missing Publishable Key. Please set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in your .env');
 }
 
-export default function RootLayout() {
+function RootLayoutNav() {
+  const router = useRouter();
+  const { isSignedIn, isLoaded } = useAuth();
+
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ...FontAwesome.font,
@@ -53,23 +56,6 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
-  return (
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
-      <ClerkLoaded>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <StatusBar style='dark' />
-          <RootLayoutNav />
-        </GestureHandlerRootView>
-      </ClerkLoaded>
-    </ClerkProvider>
-  );
-}
-
-function RootLayoutNav() {
-  const colorScheme = useColorScheme();
-  const router = useRouter();
-  const { isSignedIn } = useAuth();
-
   useEffect(() => {
     console.log('isSignedIn', isSignedIn);
 
@@ -80,93 +66,116 @@ function RootLayoutNav() {
     }
   }, [isSignedIn]); // eslint-disable-line
 
+  if (!loaded || !isLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size='large' color={Colors.light.primary} />
+      </View>
+    );
+  }
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name='index' options={{ headerShown: false }} />
-        <Stack.Screen
-          name='signup'
-          options={{
-            title: '',
-            headerBackTitle: ' ',
-            headerStyle: { backgroundColor: Colors.light.background },
-            headerShadowVisible: false,
-            headerLeft: () => (
-              <TouchableOpacity onPress={() => router.back()}>
-                <Ionicons name='arrow-back' size={34} color={Colors.light.dark} />
+    <Stack>
+      <Stack.Screen name='index' options={{ headerShown: false }} />
+      <Stack.Screen
+        name='signup'
+        options={{
+          title: '',
+          headerBackTitle: ' ',
+          headerStyle: { backgroundColor: Colors.light.background },
+          headerShadowVisible: false,
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name='arrow-back' size={34} color={Colors.light.dark} />
+            </TouchableOpacity>
+          ),
+        }}
+      />
+      <Stack.Screen
+        name='login'
+        options={{
+          title: '',
+          headerBackTitle: ' ',
+          headerStyle: { backgroundColor: Colors.light.background },
+          headerShadowVisible: false,
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name='arrow-back' size={34} color={Colors.light.dark} />
+            </TouchableOpacity>
+          ),
+          headerRight: () => (
+            <Link href='/help'>
+              <TouchableOpacity>
+                <Ionicons name='help-circle-outline' size={34} color={Colors.light.dark} />
               </TouchableOpacity>
-            ),
-          }}
-        />
-        <Stack.Screen
-          name='login'
-          options={{
-            title: '',
-            headerBackTitle: ' ',
-            headerStyle: { backgroundColor: Colors.light.background },
-            headerShadowVisible: false,
-            headerLeft: () => (
-              <TouchableOpacity onPress={() => router.back()}>
-                <Ionicons name='arrow-back' size={34} color={Colors.light.dark} />
-              </TouchableOpacity>
-            ),
-            headerRight: () => (
-              <Link href='/help'>
-                <TouchableOpacity>
-                  <Ionicons name='help-circle-outline' size={34} color={Colors.light.dark} />
-                </TouchableOpacity>
-              </Link>
-            ),
-          }}
-        />
+            </Link>
+          ),
+        }}
+      />
 
-        <Stack.Screen name='help' options={{ title: 'Help', presentation: 'modal' }} />
+      <Stack.Screen name='help' options={{ title: 'Help', presentation: 'modal' }} />
 
-        <Stack.Screen
-          name='verify/[identifier]'
-          options={{
-            title: '',
-            headerBackTitle: ' ',
-            headerStyle: { backgroundColor: Colors.light.background },
-            headerShadowVisible: false,
-            headerLeft: () => (
-              <TouchableOpacity onPress={() => router.back()}>
-                <Ionicons name='arrow-back' size={34} color={Colors.light.dark} />
-              </TouchableOpacity>
-            ),
-          }}
-        />
+      <Stack.Screen
+        name='verify/[identifier]'
+        options={{
+          title: '',
+          headerBackTitle: ' ',
+          headerStyle: { backgroundColor: Colors.light.background },
+          headerShadowVisible: false,
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name='arrow-back' size={34} color={Colors.light.dark} />
+            </TouchableOpacity>
+          ),
+        }}
+      />
 
-        <Stack.Screen
-          name='(email)/signup'
-          options={{
-            title: '',
-            headerBackTitle: ' ',
-            headerStyle: { backgroundColor: Colors.light.background },
-            headerShadowVisible: false,
-            headerLeft: () => (
-              <TouchableOpacity onPress={() => router.back()}>
-                <Ionicons name='arrow-back' size={34} color={Colors.light.dark} />
-              </TouchableOpacity>
-            ),
-          }}
-        />
+      <Stack.Screen
+        name='(email)/signup'
+        options={{
+          title: '',
+          headerBackTitle: ' ',
+          headerStyle: { backgroundColor: Colors.light.background },
+          headerShadowVisible: false,
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name='arrow-back' size={34} color={Colors.light.dark} />
+            </TouchableOpacity>
+          ),
+        }}
+      />
 
-        <Stack.Screen
-          name='(email)/login'
-          options={{
-            title: '',
-            headerBackTitle: ' ',
-            headerStyle: { backgroundColor: Colors.light.background },
-            headerShadowVisible: false,
-            headerLeft: () => (
-              <TouchableOpacity onPress={() => router.back()}>
-                <Ionicons name='arrow-back' size={34} color={Colors.light.dark} />
-              </TouchableOpacity>
-            ),
-          }}
-        />
-      </Stack>
-    </ThemeProvider>
+      <Stack.Screen
+        name='(email)/login'
+        options={{
+          title: '',
+          headerBackTitle: ' ',
+          headerStyle: { backgroundColor: Colors.light.background },
+          headerShadowVisible: false,
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name='arrow-back' size={34} color={Colors.light.dark} />
+            </TouchableOpacity>
+          ),
+        }}
+      />
+    </Stack>
+  );
+}
+
+export default function RootLayout() {
+  const colorScheme = useColorScheme();
+
+  return (
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
+      <ClerkLoaded>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <StatusBar style='dark' />
+            <RootLayoutNav />
+          </GestureHandlerRootView>
+        </ThemeProvider>
+      </ClerkLoaded>
+    </ClerkProvider>
   );
 }
